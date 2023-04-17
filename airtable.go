@@ -179,9 +179,9 @@ func (c *Client) delete(path []string) (data []byte, err error) {
 type ShortText string
 
 type User struct {
-	Id    string `json:"id"`
-	Email string `json:"email"`
-	Name  string `json:"name"`
+	Id    string `json:"id,omitempty"`
+	Email string `json:"email,omitempty"`
+	Name  string `json:"name,omitempty"`
 }
 
 type SingleSelect string
@@ -278,19 +278,67 @@ func (l *Table[T]) Retrieve(recordId string) (*Record[T], error) {
 	return record, nil
 }
 
-func (l *Table[T]) Create(record Record[T]) (*Record[T], error) {
-	data, err := l.c.post([]string{l.baseId, l.tableId}, record)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create record: %w", err)
+func (l *Table[T]) Create(items []T) ([]Record[T], error) {
+	// Split records into chunks of 10
+	chunkSize := 10
+	chunks := len(items) / chunkSize
+	if len(items)%chunkSize != 0 {
+		chunks++
 	}
 
-	newRecord := &Record[T]{}
-	err = json.Unmarshal(data, newRecord)
+	var createdRecords []Record[T]
+	for i := 0; i < chunks; i++ {
+		start := i * chunkSize
+		end := start + chunkSize
+		if end > len(items) {
+			end = len(items)
+		}
+
+		page, err := l.create(items[start:end])
+		if err != nil {
+			return createdRecords, err
+		}
+
+		createdRecords = append(createdRecords, page.Records...)
+	}
+
+	return createdRecords, nil
+}
+
+type fieldBox[T any] struct {
+	Fields *T `json:"fields"`
+}
+
+func (l *Table[T]) create(items []T) (*Page[T], error) {
+	type createPayload struct {
+		Records  []fieldBox[T] `json:"records"`
+		Typecast bool          `json:"typecast"`
+	}
+
+	// get pointer array for items
+	var ptrs []fieldBox[T]
+	for i := range items {
+		ptrs = append(ptrs, fieldBox[T]{Fields: &items[i]})
+	}
+
+	// build payload
+	payload := createPayload{
+		Records:  ptrs,
+		Typecast: true,
+	}
+
+	data, err := l.c.post([]string{l.baseId, l.tableId}, payload)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create records: %w", err)
+	}
+
+	page := &Page[T]{}
+	err = json.Unmarshal(data, page)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
 	}
 
-	return newRecord, nil
+	return page, nil
 }
 
 func (l *Table[T]) Update(records []Record[T]) ([]Record[T], error) {
