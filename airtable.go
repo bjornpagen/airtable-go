@@ -224,7 +224,7 @@ func (l *Table[T]) List() ([]Record[T], error) {
 
 	offset := ""
 	for {
-		page, err := l.list(offset)
+		page, err := l.list("", offset)
 		if err != nil {
 			return records, err
 		}
@@ -240,10 +240,13 @@ func (l *Table[T]) List() ([]Record[T], error) {
 	return records, nil
 }
 
-func (l *Table[T]) list(offset string) (*Page[T], error) {
+func (l *Table[T]) list(view, offset string) (*Page[T], error) {
 	params := []param{}
 	if offset != "" {
 		params = append(params, param{key: "offset", value: offset})
+	}
+	if view != "" {
+		params = append(params, param{key: "view", value: view})
 	}
 
 	data, err := l.c.get([]string{l.baseId, l.tableId}, params)
