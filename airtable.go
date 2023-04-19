@@ -197,9 +197,9 @@ type Email string
 type Phone string
 
 type Record[T any] struct {
-	Id          string    `json:"id,omitempty"`
-	CreatedTime time.Time `json:"createdTime,omitempty"`
-	Fields      *T        `json:"fields"`
+	ID          string     `json:"id,omitempty"`
+	CreatedTime *time.Time `json:"createdTime,omitempty"`
+	Fields      *T         `json:"fields"`
 }
 
 type Page[T any] struct {
@@ -368,7 +368,15 @@ func (l *Table[T]) Update(records []Record[T]) ([]Record[T], error) {
 }
 
 func (l *Table[T]) update(records []Record[T]) (*Page[T], error) {
-	data, err := l.c.patch([]string{l.baseId, l.tableId}, records)
+	type updatePayload[T any] struct {
+		Records []Record[T] `json:"records"`
+	}
+
+	// create payload
+	var payload updatePayload[T]
+	payload.Records = records
+
+	data, err := l.c.patch([]string{l.baseId, l.tableId}, payload)
 	if err != nil {
 		return nil, fmt.Errorf("failed to update records: %w", err)
 	}
