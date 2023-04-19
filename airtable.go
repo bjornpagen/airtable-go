@@ -178,6 +178,8 @@ func (c *Client) delete(path []string) (data []byte, err error) {
 
 type ShortText string
 
+type LongText string
+
 type User struct {
 	Id    string `json:"id,omitempty"`
 	Email string `json:"email,omitempty"`
