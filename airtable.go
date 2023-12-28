@@ -196,6 +196,8 @@ type Email string
 
 type Phone string
 
+type Relation []string
+
 type Record[T any] struct {
 	ID          string     `json:"id,omitempty"`
 	CreatedTime *time.Time `json:"createdTime,omitempty"`
