@@ -52,21 +52,21 @@ func (w *WebhookSpecification) AddFromSource(source string) *WebhookSpecificatio
 	return w
 }
 
-// AddWatchDataInField adds a field ID to watch data in.
-func (w *WebhookSpecification) AddWatchDataInField(fieldID string) *WebhookSpecification {
-	w.Options.Filters.WatchDataInFieldIds = append(w.Options.Filters.WatchDataInFieldIds, fieldID)
+// AddWatchDataInField adds a field Id to watch data in.
+func (w *WebhookSpecification) AddWatchDataInField(fieldId string) *WebhookSpecification {
+	w.Options.Filters.WatchDataInFieldIds = append(w.Options.Filters.WatchDataInFieldIds, fieldId)
 	return w
 }
 
-// AddWatchSchemaOfField adds a field ID to watch schema changes in.
-func (w *WebhookSpecification) AddWatchSchemaOfField(fieldID string) *WebhookSpecification {
-	w.Options.Filters.WatchSchemaOfFieldIds = append(w.Options.Filters.WatchSchemaOfFieldIds, fieldID)
+// AddWatchSchemaOfField adds a field Id to watch schema changes in.
+func (w *WebhookSpecification) AddWatchSchemaOfField(fieldId string) *WebhookSpecification {
+	w.Options.Filters.WatchSchemaOfFieldIds = append(w.Options.Filters.WatchSchemaOfFieldIds, fieldId)
 	return w
 }
 
 // CreateWebhookResponse defines the expected structure of the response from the Airtable API.
 type CreateWebhookResponse struct {
-	ID              string    `json:"id"`
+	Id              string    `json:"id"`
 	MacSecretBase64 string    `json:"macSecretBase64"`
 	ExpirationTime  time.Time `json:"expirationTime"`
 }

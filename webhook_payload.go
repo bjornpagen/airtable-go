@@ -15,7 +15,7 @@ import (
 
 // WebhookUser represents a user associated with a webhook action.
 type WebhookUser struct {
-	ID              string `json:"id"`
+	Id              string `json:"id"`
 	Email           string `json:"email"`
 	PermissionLevel string `json:"permissionLevel"`
 }
@@ -51,10 +51,10 @@ type WebhookResponse struct {
 // InitialWebhookResponse represents the structure of the initial payload received by the webhook.
 type InitialWebhookResponse struct {
 	Base struct {
-		ID string `json:"id"`
+		Id string `json:"id"`
 	} `json:"base"`
 	Webhook struct {
-		ID string `json:"id"`
+		Id string `json:"id"`
 	} `json:"webhook"`
 	Timestamp time.Time `json:"timestamp"`
 }
@@ -146,7 +146,7 @@ func (c *Client) NewWebhookManager(ch chan InitialWebhookResponse) *WebhookManag
 // Run starts listening on the InitialResponseChan for incoming initial webhook responses.
 func (h *WebhookManager) Run() error {
 	for initialResponse := range h.initialResponseChan {
-		err := h.FetchWebhookPayloads(initialResponse.Base.ID, initialResponse.Webhook.ID)
+		err := h.FetchWebhookPayloads(initialResponse.Base.Id, initialResponse.Webhook.Id)
 		if err != nil {
 			return err // Return the error encountered
 		}
@@ -155,9 +155,9 @@ func (h *WebhookManager) Run() error {
 }
 
 // FetchWebhookPayloads fetches the detailed WebhookPayloads from Airtable.
-func (h *WebhookManager) FetchWebhookPayloads(baseID, webhookID string) error {
+func (h *WebhookManager) FetchWebhookPayloads(baseId, webhookId string) error {
 	for {
-		path := []string{"bases", baseID, "webhooks", webhookID, "payloads"}
+		path := []string{"bases", baseId, "webhooks", webhookId, "payloads"}
 		params := []param{{key: "cursor", value: fmt.Sprintf("%d", h.lastCursor)}}
 
 		data, err := h.client.get(path, params)
