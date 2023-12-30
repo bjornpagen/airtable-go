@@ -1,10 +1,15 @@
 package airtable
 
 import (
+	"crypto/hmac"
+	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -61,10 +66,35 @@ type InitialWebhookResponseHandler struct {
 	C chan InitialWebhookResponse
 }
 
-// ServeHTTP implements the http.Handler interface for InitialWebhookResponseHandler.
 func (h *InitialWebhookResponseHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	// Read and store the body of the request
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("error reading request body: %v", err), http.StatusBadRequest)
+		return
+	}
+
+	// Compute HMAC
+	mac := hmac.New(sha256.New, h.macSecret)
+	mac.Write(body)
+	expectedHMAC := mac.Sum(nil)
+
+	// Extract the HMAC from the request header
+	recievedHMAC, err := hex.DecodeString(strings.TrimPrefix(r.Header.Get("X-Airtable-Content-MAC"), "hmac-sha256="))
+	if err != nil {
+		http.Error(w, "invalid HMAC in header", http.StatusBadRequest)
+		return
+	}
+
+	// Compare the two HMACs
+	if !hmac.Equal(recievedHMAC, expectedHMAC) {
+		http.Error(w, "invalid HMAC", http.StatusUnauthorized)
+		return
+	}
+
+	// Decode the payload
 	var initialPayload InitialWebhookResponse
-	if err := json.NewDecoder(r.Body).Decode(&initialPayload); err != nil {
+	if err := json.Unmarshal(body, &initialPayload); err != nil {
 		http.Error(w, fmt.Sprintf("error decoding initial payload: %v", err), http.StatusBadRequest)
 		return
 	}
@@ -72,11 +102,9 @@ func (h *InitialWebhookResponseHandler) ServeHTTP(w http.ResponseWriter, r *http
 	// Send the initial payload to the channel
 	select {
 	case h.C <- initialPayload:
-		// Acknowledge the webhook.
 		w.WriteHeader(http.StatusOK)
 		fmt.Fprintln(w, "Initial webhook response received")
 	default:
-		// Handle the case where the channel is full.
 		http.Error(w, "channel is full, unable to process initial webhook response at this time", http.StatusServiceUnavailable)
 	}
 }
