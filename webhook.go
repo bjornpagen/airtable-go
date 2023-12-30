@@ -8,41 +8,30 @@ import (
 
 // filters defines filter options for the webhook.
 type filters struct {
-	RecordChangeScope   string   `json:"recordChangeScope,omitempty"`
-	DataTypes           []string `json:"dataTypes"`
-	ChangeTypes         []string `json:"changeTypes,omitempty"`
-	FromSources         []string `json:"fromSources,omitempty"`
-	SourceOptions       *any     `json:"sourceOptions,omitempty"`
-	WatchDataInFields   []string `json:"watchDataInFields,omitempty"`
-	WatchSchemaOfFields []string `json:"watchSchemaOfFields,omitempty"`
-}
-
-// includes defines include options for the webhook.
-type includes struct {
-	IncludeCellValuesInFieldIds     []string `json:"includeCellValuesInFieldIds,omitempty"`
-	IncludePreviousCellValues       *bool    `json:"includePreviousCellValues,omitempty"`
-	IncludePreviousFieldDefinitions *bool    `json:"includePreviousFieldDefinitions,omitempty"`
+	RecordChangeScope     string   `json:"recordChangeScope,omitempty"`
+	DataTypes             []string `json:"dataTypes"`
+	ChangeTypes           []string `json:"changeTypes,omitempty"`
+	FromSources           []string `json:"fromSources,omitempty"`
+	SourceOptions         *any     `json:"sourceOptions,omitempty"`
+	WatchDataInFieldIds   []string `json:"watchDataInFieldIds,omitempty"`
+	WatchSchemaOfFieldIds []string `json:"watchSchemaOfFieldIds,omitempty"`
 }
 
 // WebhookSpecification defines the structure for the webhook creation request.
 type WebhookSpecification struct {
 	Options struct {
-		Filters  filters  `json:"filters"`
-		Includes includes `json:"includes,omitempty"`
+		Filters filters `json:"filters"`
 	} `json:"options"`
 }
 
-func NewWebhookSpecification(tableId string) *WebhookSpecification {
-	return &WebhookSpecification{
-		Options: struct {
-			Filters  filters  `json:"filters"`
-			Includes includes `json:"includes,omitempty"`
-		}{
-			Filters: filters{
-				RecordChangeScope: tableId,
-			},
-		},
-	}
+func NewWebhookSpecification() *WebhookSpecification {
+	return &WebhookSpecification{}
+}
+
+// SetRecordChangeScope sets the recordChangeScope.
+func (w *WebhookSpecification) SetRecordChangeScope(scope string) *WebhookSpecification {
+	w.Options.Filters.RecordChangeScope = scope
+	return w
 }
 
 // AddDataType adds a dataType to the list.
@@ -65,37 +54,13 @@ func (w *WebhookSpecification) AddFromSource(source string) *WebhookSpecificatio
 
 // AddWatchDataInField adds a field ID to watch data in.
 func (w *WebhookSpecification) AddWatchDataInField(fieldID string) *WebhookSpecification {
-	w.Options.Filters.WatchDataInFields = append(w.Options.Filters.WatchDataInFields, fieldID)
+	w.Options.Filters.WatchDataInFieldIds = append(w.Options.Filters.WatchDataInFieldIds, fieldID)
 	return w
 }
 
 // AddWatchSchemaOfField adds a field ID to watch schema changes in.
 func (w *WebhookSpecification) AddWatchSchemaOfField(fieldID string) *WebhookSpecification {
-	w.Options.Filters.WatchSchemaOfFields = append(w.Options.Filters.WatchSchemaOfFields, fieldID)
-	return w
-}
-
-// IncludeCellValuesInFields specifies fields to include cell values for.
-func (w *WebhookSpecification) IncludeCellValuesInFields(fieldIDs []string) *WebhookSpecification {
-	w.Options.Includes.IncludeCellValuesInFieldIds = fieldIDs
-	return w
-}
-
-// IncludeAllCellValues sets the includeCellValuesInFieldIds to ["all"].
-func (w *WebhookSpecification) IncludeAllCellValues() *WebhookSpecification {
-	w.Options.Includes.IncludeCellValuesInFieldIds = []string{"all"}
-	return w
-}
-
-// SetIncludePreviousCellValues sets the includePreviousCellValues flag.
-func (w *WebhookSpecification) SetIncludePreviousCellValues(include bool) *WebhookSpecification {
-	w.Options.Includes.IncludePreviousCellValues = &include
-	return w
-}
-
-// SetIncludePreviousFieldDefinitions sets the includePreviousFieldDefinitions flag.
-func (w *WebhookSpecification) SetIncludePreviousFieldDefinitions(include bool) *WebhookSpecification {
-	w.Options.Includes.IncludePreviousFieldDefinitions = &include
+	w.Options.Filters.WatchSchemaOfFieldIds = append(w.Options.Filters.WatchSchemaOfFieldIds, fieldID)
 	return w
 }
 

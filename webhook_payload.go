@@ -1,6 +1,7 @@
 package airtable
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -55,7 +56,9 @@ type InitialWebhookResponse struct {
 
 // InitialWebhookResponseHandler is a struct that holds a channel for InitialWebhookResponse payloads.
 type InitialWebhookResponseHandler struct {
-	PayloadChan chan InitialWebhookResponse
+	macSecret []byte
+
+	C chan InitialWebhookResponse
 }
 
 // ServeHTTP implements the http.Handler interface for InitialWebhookResponseHandler.
@@ -68,7 +71,7 @@ func (h *InitialWebhookResponseHandler) ServeHTTP(w http.ResponseWriter, r *http
 
 	// Send the initial payload to the channel
 	select {
-	case h.PayloadChan <- initialPayload:
+	case h.C <- initialPayload:
 		// Acknowledge the webhook.
 		w.WriteHeader(http.StatusOK)
 		fmt.Fprintln(w, "Initial webhook response received")
@@ -79,10 +82,17 @@ func (h *InitialWebhookResponseHandler) ServeHTTP(w http.ResponseWriter, r *http
 }
 
 // NewInitialWebhookResponseHandler creates a new InitialWebhookResponseHandler with a channel for InitialWebhookPayloads.
-func NewInitialWebhookResponseHandler() *InitialWebhookResponseHandler {
-	return &InitialWebhookResponseHandler{
-		PayloadChan: make(chan InitialWebhookResponse, 1),
+func NewInitialWebhookResponseHandler(macSecretBase64 string) (*InitialWebhookResponseHandler, error) {
+	// decode the secret
+	macSecret, err := base64.StdEncoding.DecodeString(macSecretBase64)
+	if err != nil {
+		return nil, fmt.Errorf("error decoding mac secret: %v", err)
 	}
+
+	return &InitialWebhookResponseHandler{
+		macSecret: macSecret,
+		C:         make(chan InitialWebhookResponse, 1),
+	}, nil
 }
 
 // WebhookManager is responsible for handling the entire webhook process.
@@ -91,7 +101,7 @@ type WebhookManager struct {
 	client              *Client
 	lastCursor          int // Stores the last cursor value
 
-	PayloadChan chan WebhookPayload
+	C chan WebhookPayload
 }
 
 // NewWebhookManager creates a new WebhookManager as a method of the Client type.
@@ -101,7 +111,7 @@ func (c *Client) NewWebhookManager(ch chan InitialWebhookResponse) *WebhookManag
 		initialResponseChan: ch,
 		lastCursor:          1, // Initialize to 1 as per the documentation
 
-		PayloadChan: make(chan WebhookPayload, 1),
+		C: make(chan WebhookPayload, 1),
 	}
 }
 
@@ -134,7 +144,7 @@ func (h *WebhookManager) FetchWebhookPayloads(baseID, webhookID string) error {
 
 		// Process and send each payload in the response
 		for _, payload := range webhookResponse.Payloads {
-			h.PayloadChan <- payload
+			h.C <- payload
 		}
 
 		// Update the last cursor with the new value
@@ -153,19 +163,24 @@ func (h *WebhookManager) FetchWebhookPayloads(baseID, webhookID string) error {
 type WebhookHandler struct {
 	initialHandler *InitialWebhookResponseHandler
 	manager        *WebhookManager
-	PayloadChan    chan WebhookPayload
+
+	C chan WebhookPayload
 }
 
 // NewWebhookHandler creates a new WebhookHandler as a method of the Client type.
-func (c *Client) NewWebhookHandler() *WebhookHandler {
-	initialHandler := NewInitialWebhookResponseHandler()
-	manager := c.NewWebhookManager(initialHandler.PayloadChan)
+func (c *Client) NewWebhookHandler(macSecretBase64 string) (*WebhookHandler, error) {
+	initialHandler, err := NewInitialWebhookResponseHandler(macSecretBase64)
+	if err != nil {
+		return nil, fmt.Errorf("error creating initial webhook response handler: %v", err)
+	}
+
+	manager := c.NewWebhookManager(initialHandler.C)
 
 	return &WebhookHandler{
 		initialHandler: initialHandler,
 		manager:        manager,
-		PayloadChan:    manager.PayloadChan,
-	}
+		C:              manager.C,
+	}, nil
 }
 
 // ServeHTTP implements the http.Handler interface.
@@ -177,3 +192,5 @@ func (h *WebhookHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func (h *WebhookHandler) Run() error {
 	return h.manager.Run() // Delegate to WebhookManager's Run method
 }
+
+//
